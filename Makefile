@@ -6,7 +6,10 @@ cpuid_info : cpuid_info.cpp
 install : cpuid_info
 	cp cpuid_info $(INSTALL_DIR)/.
 
-.PHONY : clean
+.PHONY : clean test
+
+test : cpuid_info
+	./cpuid_info
 
 clean :
 	rm -f cpuid_info
