@@ -1,6 +1,6 @@
 INSTALL_DIR ?=/usr/local/bin
 
-cpuid_info : cpuid_info.cpp
+cpuid_info : cpuid_info.cpp cpuid_info.hpp
 	$(CXX) -O3 -o cpuid_info cpuid_info.cpp
 
 install : cpuid_info

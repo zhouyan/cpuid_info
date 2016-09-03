@@ -479,13 +479,19 @@ class CPUID
             return os;
 
         print_equal(os);
-        os << "Vendor ID                  " << vendor() << '\n';
-        if (max_eax_ext() >= ext0_ + 4U)
-            os << "Processor brand            " << brand() << '\n';
+        const int width = 24;
+        os << std::setw(width) << std::left << "Vendor ID" << vendor() << '\n';
+        if (max_eax_ext() >= ext0_ + 4U) {
+            os << std::setw(width) << std::left << "Processor brand" << brand()
+               << '\n';
+        }
         if (max_eax() >= 0x16) {
-            os << "Base frequency (MHz)       " << base_freq() << '\n';
-            os << "Maximum frequency (MHz)    " << max_freq() << '\n';
-            os << "Bus frequency (MHz)        " << bus_freq() << '\n';
+            os << std::setw(width) << std::left << "Base frequency (MHz)"
+               << base_freq() << '\n';
+            os << std::setw(width) << std::left << "Maximum frequency (MHz)"
+               << max_freq() << '\n';
+            os << std::setw(width) << std::left << "Bus frequency (MHz)"
+               << bus_freq() << '\n';
         }
         if (max_eax() >= 0x04) {
             print_equal(os);
@@ -638,13 +644,13 @@ class CPUID
     template <typename CharT, typename Traits>
     static void print_equal(std::basic_ostream<CharT, Traits> &os)
     {
-        os << std::string(90, '=') << '\n';
+        os << std::string(80, '=') << '\n';
     }
 
     template <typename CharT, typename Traits>
     static void print_dash(std::basic_ostream<CharT, Traits> &os)
     {
-        os << std::string(90, '-') << '\n';
+        os << std::string(80, '-') << '\n';
     }
 
     template <typename CharT, typename Traits>
@@ -655,15 +661,16 @@ class CPUID
         for (unsigned ecx = 0x00; ecx != max_ecx; ++ecx)
             caches.push_back(cache_param(ecx));
 
-        const std::size_t fix = 12;
         std::stringstream ss;
 
-        os << "Cache level                ";
+        const int fix = 12;
+        const int width = 36;
+        os << std::setw(width) << std::left << "Cache level";
         for (std::size_t i = 0; i != caches.size(); ++i)
             os << std::setw(fix) << caches[i].level();
         os << '\n';
 
-        os << "Cache type                 ";
+        os << std::setw(width) << std::left << "Cache type";
         for (std::size_t i = 0; i != caches.size(); ++i) {
             switch (caches[i].type()) {
                 case CPUIDCacheTypeNull:
@@ -681,7 +688,7 @@ class CPUID
         }
         os << '\n';
 
-        os << "Cache size (byte)          ";
+        os << std::setw(width) << std::left << "Cache size (byte)";
         for (std::size_t i = 0; i != caches.size(); ++i) {
             unsigned b = caches[i].size();
             ss.str(std::string());
@@ -698,63 +705,63 @@ class CPUID
         }
         os << '\n';
 
-        os << "Maximum Proc sharing       ";
+        os << std::setw(width) << std::left << "Maximum Proc sharing";
         for (std::size_t i = 0; i != caches.size(); ++i)
             os << std::setw(fix) << caches[i].max_proc_sharing();
         os << '\n';
 
-        os << "Maximum Proc physical      ";
+        os << std::setw(width) << std::left << "Maximum Proc physical";
         for (std::size_t i = 0; i != caches.size(); ++i)
             os << std::setw(fix) << caches[i].max_proc_physical();
         os << '\n';
 
-        os << "Coherency line size (byte) ";
+        os << std::setw(width) << std::left << "Coherency line size (byte)";
         for (std::size_t i = 0; i != caches.size(); ++i)
             os << std::setw(fix) << caches[i].line_size();
         os << '\n';
 
-        os << "Physical line partitions   ";
+        os << std::setw(width) << std::left << "Physical line partitions";
         for (std::size_t i = 0; i != caches.size(); ++i)
             os << std::setw(fix) << caches[i].partitions();
         os << '\n';
 
-        os << "Ways of associative        ";
+        os << std::setw(width) << std::left << "Ways of associative";
         for (std::size_t i = 0; i != caches.size(); ++i)
             os << std::setw(fix) << caches[i].ways();
         os << '\n';
 
-        os << "Number of sets             ";
+        os << std::setw(width) << std::left << "Number of sets";
         for (std::size_t i = 0; i != caches.size(); ++i)
             os << std::setw(fix) << caches[i].sets();
         os << '\n';
 
-        os << "Self initializing          ";
+        os << std::setw(width) << std::left << "Self initializing";
         for (std::size_t i = 0; i != caches.size(); ++i) {
             os << std::setw(fix)
                << (caches[i].self_initializing() ? "Yes" : "No");
         }
         os << '\n';
 
-        os << "Fully associative          ";
+        os << std::setw(width) << std::left << "Fully associative";
         for (std::size_t i = 0; i != caches.size(); ++i) {
             os << std::setw(fix)
                << (caches[i].fully_associative() ? "Yes" : "No");
         }
         os << '\n';
 
-        os << "Write-back invalidate      ";
+        os << std::setw(width) << std::left << "Write-back invalidate";
         for (std::size_t i = 0; i != caches.size(); ++i) {
             os << std::setw(fix) << (caches[i].wbinvd() ? "Yes" : "No");
         }
         os << '\n';
 
-        os << "Cache inclusiveness        ";
+        os << std::setw(width) << std::left << "Cache inclusiveness";
         for (std::size_t i = 0; i != caches.size(); ++i) {
             os << std::setw(fix) << (caches[i].inclusiveness() ? "Yes" : "No");
         }
         os << '\n';
 
-        os << "Complex cache indexing     ";
+        os << std::setw(width) << std::left << "Complex cache indexing";
         for (std::size_t i = 0; i != caches.size(); ++i) {
             os << std::setw(fix)
                << (caches[i].complex_indexing() ? "Yes" : "No");
@@ -769,7 +776,7 @@ class CPUID
             std::vector<std::string> feats;
             feature_str1(feats);
             if (feats.size() != 0) {
-                os << "Processor info and features\n";
+                os << "Processor features\n";
                 print_dash(os);
                 print_feature(os, feats);
             }
@@ -789,7 +796,7 @@ class CPUID
             feature_str_ext1(feats);
             if (feats.size() != 0) {
                 print_equal(os);
-                os << "Extended processor info and features\n";
+                os << "Extended processor features\n";
                 print_dash(os);
                 print_feature(os, feats);
             }
@@ -802,8 +809,8 @@ class CPUID
     {
         std::sort(feats.begin(), feats.end());
         for (std::size_t i = 0; i != feats.size(); ++i) {
-            print_feat(os, feats[i], 15);
-            if (i % 6 == 5 || i == feats.size() - 1)
+            print_feat(os, feats[i], 16);
+            if (i % 5 == 4 || i == feats.size() - 1)
                 os << '\n';
         }
     }
