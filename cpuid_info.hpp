@@ -528,7 +528,7 @@ class CPUID
             return os;
 
         print_equal(os);
-        const int width = 24;
+        const int width = 20;
         os << std::setw(width) << std::left << "Vendor ID" << vendor() << '\n';
         if (max_eax_ext() >= ext0_ + 4U) {
             os << std::setw(width) << std::left << "Processor brand" << brand()
@@ -693,13 +693,13 @@ class CPUID
     template <typename CharT, typename Traits>
     static void print_equal(std::basic_ostream<CharT, Traits> &os)
     {
-        os << std::string(80, '=') << '\n';
+        os << std::string(100, '=') << '\n';
     }
 
     template <typename CharT, typename Traits>
     static void print_dash(std::basic_ostream<CharT, Traits> &os)
     {
-        os << std::string(80, '-') << '\n';
+        os << std::string(100, '-') << '\n';
     }
 
     template <typename CharT, typename Traits>
@@ -713,7 +713,7 @@ class CPUID
         std::stringstream ss;
 
         const int fix = 12;
-        const int width = 36;
+        const int width = 40;
         os << std::setw(width) << std::left << "Cache level";
         for (std::size_t i = 0; i != caches.size(); ++i)
             os << std::setw(fix) << caches[i].level();
@@ -859,7 +859,7 @@ class CPUID
         std::sort(feats.begin(), feats.end());
         for (std::size_t i = 0; i != feats.size(); ++i) {
             print_feat(os, feats[i], 16);
-            if (i % 5 == 4 || i == feats.size() - 1)
+            if (i % 6 == 5 || i == feats.size() - 1)
                 os << '\n';
         }
     }
