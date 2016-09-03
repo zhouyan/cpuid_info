@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <array>
 #include <cstddef>
 #include <cstring>
 #include <iomanip>
@@ -18,10 +17,10 @@
     {                                                                         \
         public:                                                               \
         static std::string str() { return std::string(#feat); }               \
-        static constexpr unsigned eax = a##U;                                 \
-        static constexpr unsigned ecx = c##U;                                 \
-        static constexpr unsigned bit = b##U;                                 \
-        static constexpr std::size_t index = i;                               \
+        static const unsigned eax = a##U;                                     \
+        static const unsigned ecx = c##U;                                     \
+        static const unsigned bit = b##U;                                     \
+        static const std::size_t index = i;                                   \
     }; // class CPUIDFeatureInfo
 
 #define DEFINE_UTILITY_CPUID_FEATURE_INFO_EXT(feat, a, c, i, b)               \
@@ -30,11 +29,19 @@
     {                                                                         \
         public:                                                               \
         static std::string str() { return std::string(#feat); }               \
-        static constexpr unsigned eax = 0x80000000U + a##U;                   \
-        static constexpr unsigned ecx = c##U;                                 \
-        static constexpr unsigned bit = b##U;                                 \
-        static constexpr std::size_t index = i;                               \
+        static const unsigned eax = 0x80000000U + a##U;                       \
+        static const unsigned ecx = c##U;                                     \
+        static const unsigned bit = b##U;                                     \
+        static const std::size_t index = i;                                   \
     }; // CPUIDFeatureInfo
+
+template <bool>
+class BoolType
+{
+}; // class BoolType
+
+typedef BoolType<true> TrueType;
+typedef BoolType<false> FalseType;
 
 inline void cpuid(unsigned eax, unsigned ecx, unsigned *reg)
 {
@@ -221,10 +228,10 @@ class CPUIDFeatureInfo
 {
     public:
     static std::string str();
-    static constexpr unsigned eax = 0x00U;
-    static constexpr unsigned ecx = 0x00U;
-    static constexpr unsigned index = 0x00U;
-    static constexpr unsigned bit = 0x00U;
+    static const unsigned eax = 0x00U;
+    static const unsigned ecx = 0x00U;
+    static const unsigned index = 0x00U;
+    static const unsigned bit = 0x00U;
 }; // class CPUIDFeatureInfo
 
 DEFINE_UTILITY_CPUID_FEATURE_INFO(SSE3, 0x01, 0x00, 2, 0)
@@ -375,7 +382,9 @@ DEFINE_UTILITY_CPUID_FEATURE_INFO_EXT(3DNOW, 0x01, 0x00, 3, 31)
 class CPUID
 {
     public:
-    typedef std::array<unsigned, 4> reg_type;
+    struct reg_type {
+        unsigned v[4];
+    };
 
     class cache_param_type
     {
@@ -394,29 +403,37 @@ class CPUID
             , inclusiveness_(false)
             , complex_indexing_(false)
         {
-            unsigned t = extract_bits<4, 0>(std::get<0>(reg));
+            unsigned t = extract_bits<4, 0>(reg.v[0]);
             switch (t) {
-                case 1: type_ = CPUIDCacheTypeData; break;
-                case 2: type_ = CPUIDCacheTypeInstruction; break;
-                case 3: type_ = CPUIDCacheTypeUnified; break;
-                default: type_ = CPUIDCacheTypeNull; return;
+                case 1:
+                    type_ = CPUIDCacheTypeData;
+                    break;
+                case 2:
+                    type_ = CPUIDCacheTypeInstruction;
+                    break;
+                case 3:
+                    type_ = CPUIDCacheTypeUnified;
+                    break;
+                default:
+                    type_ = CPUIDCacheTypeNull;
+                    return;
             }
 
-            level_ = extract_bits<7, 5>(std::get<0>(reg));
-            self_initializing_ = test_bit<8>(std::get<0>(reg));
-            fully_associative_ = test_bit<9>(std::get<0>(reg));
-            max_proc_sharing_ = extract_bits<25, 14>(std::get<0>(reg)) + 1;
-            max_proc_physical_ = extract_bits<31, 26>(std::get<0>(reg)) + 1;
+            level_ = extract_bits<7, 5>(reg.v[0]);
+            self_initializing_ = test_bit<8>(reg.v[0]);
+            fully_associative_ = test_bit<9>(reg.v[0]);
+            max_proc_sharing_ = extract_bits<25, 14>(reg.v[0]) + 1;
+            max_proc_physical_ = extract_bits<31, 26>(reg.v[0]) + 1;
 
-            line_size_ = extract_bits<11, 0>(std::get<1>(reg)) + 1;
-            partitions_ = extract_bits<21, 12>(std::get<1>(reg)) + 1;
-            ways_ = extract_bits<31, 22>(std::get<1>(reg)) + 1;
-            sets_ = extract_bits<31, 0>(std::get<2>(reg)) + 1;
+            line_size_ = extract_bits<11, 0>(reg.v[1]) + 1;
+            partitions_ = extract_bits<21, 12>(reg.v[1]) + 1;
+            ways_ = extract_bits<31, 22>(reg.v[1]) + 1;
+            sets_ = extract_bits<31, 0>(reg.v[2]) + 1;
             size_ = line_size_ * partitions_ * ways_ * sets_;
 
-            wbinvd_ = test_bit<0>(std::get<3>(reg));
-            inclusiveness_ = test_bit<1>(std::get<3>(reg));
-            complex_indexing_ = test_bit<2>(std::get<3>(reg));
+            wbinvd_ = test_bit<0>(reg.v[3]);
+            inclusiveness_ = test_bit<1>(reg.v[3]);
+            complex_indexing_ = test_bit<2>(reg.v[3]);
         }
 
         CPUIDCacheType type() const { return type_; }
@@ -483,20 +500,20 @@ class CPUID
     template <unsigned EAX, unsigned ECX>
     static const reg_type &info()
     {
-        static reg_type reg(info_dispatch<EAX, ECX>(
-            std::integral_constant < bool, EAX == 0x00 || EAX == ext0_ > (),
-            std::integral_constant < bool, EAX<ext0_>()));
+        static reg_type reg(
+            info_dispatch<EAX, ECX>(BoolType<(EAX == 0x00 || EAX == ext0_)>(),
+                BoolType<(EAX < ext0_)>()));
 
         return reg;
     }
 
-    static unsigned max_eax() { return std::get<0>(info<0x00, 0x00>()); }
-    static unsigned max_eax_ext() { return std::get<0>(info<ext0_, 0x00>()); }
+    static unsigned max_eax() { return info<0x00, 0x00>().v[0]; }
+    static unsigned max_eax_ext() { return info<ext0_, 0x00>().v[0]; }
 
     static std::string vendor()
     {
         reg_type reg(info<0x00, 0x00>());
-        const unsigned *uptr = reg.data();
+        const unsigned *uptr = reg.v;
         char str[sizeof(unsigned) * 3 + 1] = {'\0'};
         std::memcpy(str + sizeof(unsigned) * 0, uptr + 1, sizeof(unsigned));
         std::memcpy(str + sizeof(unsigned) * 1, uptr + 3, sizeof(unsigned));
@@ -512,9 +529,9 @@ class CPUID
         reg_type reg4(info<ext0_ + 4U, 0>());
         const std::size_t reg_size = sizeof(unsigned) * 4;
         char str[reg_size * 3] = {'\0'};
-        std::memcpy(str + reg_size * 0, reg2.data(), reg_size);
-        std::memcpy(str + reg_size * 1, reg3.data(), reg_size);
-        std::memcpy(str + reg_size * 2, reg4.data(), reg_size);
+        std::memcpy(str + reg_size * 0, reg2.v, reg_size);
+        std::memcpy(str + reg_size * 1, reg3.v, reg_size);
+        std::memcpy(str + reg_size * 2, reg4.v, reg_size);
 
         return std::string(str);
     }
@@ -524,8 +541,8 @@ class CPUID
         reg_type reg;
         unsigned ecx = 0x00;
         while (true) {
-            cpuid(0x04, ecx, reg.data());
-            if (extract_bits<4, 0>(std::get<0>(reg)) == 0)
+            cpuid(0x04, ecx, reg.v);
+            if (extract_bits<4, 0>(reg.v[0]) == 0)
                 break;
             ++ecx;
         }
@@ -536,72 +553,69 @@ class CPUID
     static cache_param_type cache_param(unsigned cache_index)
     {
         reg_type reg;
-        cpuid(0x04, cache_index, reg.data());
+        cpuid(0x04, cache_index, reg.v);
 
         return cache_param_type(reg);
     }
 
     static bool intel_turbo_boost()
     {
-        return test_bit<1>(std::get<0>(info<0x06, 0x00>()));
+        return test_bit<1>(info<0x06, 0x00>().v[0]);
     }
 
     static unsigned base_freq()
     {
-        return extract_bits<15, 0>(std::get<0>(info<0x16, 0x00>()));
+        return extract_bits<15, 0>(info<0x16, 0x00>().v[0]);
     }
 
     static unsigned max_freq()
     {
-        return extract_bits<15, 0>(std::get<1>(info<0x16, 0x00>()));
+        return extract_bits<15, 0>(info<0x16, 0x00>().v[1]);
     }
 
     static unsigned bus_freq()
     {
-        return extract_bits<15, 0>(std::get<2>(info<0x16, 0x00>()));
+        return extract_bits<15, 0>(info<0x16, 0x00>().v[2]);
     }
 
     template <CPUIDFeature Feat>
     static bool has_feature()
     {
         return test_bit<CPUIDFeatureInfo<Feat>::bit>(
-            std::get<CPUIDFeatureInfo<Feat>::index>(
-                info<CPUIDFeatureInfo<Feat>::eax,
-                    CPUIDFeatureInfo<Feat>::ecx>()));
+            info<CPUIDFeatureInfo<Feat>::eax, CPUIDFeatureInfo<Feat>::ecx>()
+                .v[CPUIDFeatureInfo<Feat>::index]);
     }
 
     private:
-    static constexpr unsigned ext0_ = 0x80000000U;
+    static const unsigned ext0_ = 0x80000000U;
 
     template <unsigned, unsigned>
-    static reg_type info_dispatch(std::true_type, std::true_type)
+    static reg_type info_dispatch(TrueType, TrueType)
     {
         reg_type reg;
-        cpuid(0x00, 0x00, reg.data());
+        cpuid(0x00, 0x00, reg.v);
 
         return reg;
     }
 
     template <unsigned, unsigned>
-    static reg_type info_dispatch(std::true_type, std::false_type)
+    static reg_type info_dispatch(TrueType, FalseType)
     {
         reg_type reg;
-        cpuid(ext0_, 0x00, reg.data());
+        cpuid(ext0_, 0x00, reg.v);
 
         return reg;
     }
 
     template <unsigned EAX, unsigned ECX, bool Basic>
-    static reg_type info_dispatch(
-        std::false_type, std::integral_constant<bool, Basic>)
+    static reg_type info_dispatch(FalseType, BoolType<Basic>)
     {
-        reg_type reg(info_dispatch<EAX, ECX>(
-            std::true_type(), std::integral_constant<bool, Basic>()));
+        reg_type reg(info_dispatch<EAX, ECX>(TrueType(), BoolType<Basic>()));
 
-        if (EAX > std::get<0>(reg))
-            reg.fill(0);
+        if (EAX > reg.v[0])
+            std::fill(reg.v, reg.v + 4, 0);
         else
-            cpuid(EAX, ECX, reg.data());
+            cpuid(EAX, ECX, reg.v);
 
         return reg;
     }
@@ -649,8 +663,11 @@ class CPUID
         os << "Cache type                 ";
         for (std::size_t i = 0; i != caches.size(); ++i) {
             switch (caches[i].type()) {
-                case CPUIDCacheTypeNull: break;
-                case CPUIDCacheTypeData: os << std::setw(fix) << "Data"; break;
+                case CPUIDCacheTypeNull:
+                    break;
+                case CPUIDCacheTypeData:
+                    os << std::setw(fix) << "Data";
+                    break;
                 case CPUIDCacheTypeInstruction:
                     os << std::setw(fix) << "Instruction";
                     break;
