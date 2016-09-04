@@ -181,8 +181,8 @@ inline void print_leave(unsigned eax, unsigned ecx, const std::string &info)
 {
     print_equal();
     std::cout << info;
-    std::cout << " (EAX = 0x" << std::hex << eax;
-    std::cout << ", ECX = 0x" << std::hex << ecx;
+    std::cout << " (EAX = 0x" << std::hex << eax << std::dec;
+    std::cout << ", ECX = 0x" << std::hex << ecx << std::dec;
     std::cout << ")" << std::endl;
     print_dash();
 }
@@ -314,7 +314,7 @@ inline void print_eax<2>()
     print_leave(2, 0, "Cache and TLB information");
     for (std::size_t i = 0; i != feats.size(); ++i)
         if (feats[i] != 0)
-            std::cout << std::hex << "0x" << feats[i] << ' ';
+            std::cout << std::hex << "0x" << std::dec << feats[i] << ' ';
     std::cout << std::endl;
     print_dash();
 }
@@ -657,8 +657,8 @@ int main()
     }
 
     std::cout << "Max calling EAX: ";
-    std::cout << "0x" << std::hex << max_eax << ", ";
-    std::cout << "0x" << std::hex << max_eax_ext << std::endl;
+    std::cout << "0x" << std::hex << max_eax << std::dec << ", ";
+    std::cout << "0x" << std::hex << max_eax_ext << std::dec << std::endl;
     print_dash();
 
     if (max_eax >= 1) {
