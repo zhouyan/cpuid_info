@@ -205,6 +205,7 @@ template <>
 inline void print_eax<1>()
 {
     reg_type reg(cpuid(1, 0));
+    print_leave(1, 0, "Feature flags");
     std::vector<std::string> feats;
 
     test_feature(feats, reg.ecx, 0, "SSE3");
@@ -273,7 +274,6 @@ inline void print_eax<1>()
     test_feature(feats, reg.edx, 30, "IA64");
     test_feature(feats, reg.edx, 31, "PBE");
 
-    print_leave(1, 0, "Feature flags");
     print_feature(feats);
 }
 
@@ -281,6 +281,7 @@ template <>
 inline void print_eax<2>()
 {
     reg_type reg(cpuid(2, 0));
+    print_leave(2, 0, "Cache and TLB information");
     std::vector<unsigned> feats;
 
     if (!test_bit(reg.eax, 31)) {
@@ -311,7 +312,6 @@ inline void print_eax<2>()
     }
 
     std::sort(feats.begin(), feats.end());
-    print_leave(2, 0, "Cache and TLB information");
     for (std::size_t i = 0; i != feats.size(); ++i)
         if (feats[i] != 0)
             std::cout << std::hex << "0x" << std::dec << feats[i] << ' ';
@@ -323,7 +323,6 @@ template <>
 inline void print_eax<4>()
 {
     print_leave(4, 0, "Deterministic Cache Parameters");
-
     reg_type reg;
     unsigned ecx = 0;
     std::vector<cache_param_type> caches;
@@ -437,8 +436,7 @@ template <>
 inline void print_eax<6>()
 {
     reg_type reg(cpuid(6, 0));
-
-    print_leave(4, 0, "Thermal and Power Management");
+    print_leave(6, 0, "Thermal and Power Management");
 
     test_feature(reg.eax, 0, "Digital temperature sensor");
     test_feature(reg.eax, 1, "Intel Turbo Boost Technology");
@@ -470,6 +468,7 @@ template <>
 inline void print_eax<7>()
 {
     reg_type reg(cpuid(7, 0));
+    print_leave(7, 0, "Extended feature flags");
     std::vector<std::string> feats;
 
     test_feature(feats, reg.ebx, 0, "FSGSBASE");
@@ -538,7 +537,6 @@ inline void print_eax<7>()
     test_feature(feats, reg.ecx, 30, "Reserved");
     test_feature(feats, reg.ecx, 31, "Reserved");
 
-    print_leave(7, 0, "Extended feature flags");
     print_feature(feats);
 }
 
@@ -546,7 +544,6 @@ template <>
 inline void print_eax<0x16>()
 {
     reg_type reg(cpuid(0x16, 0));
-
     print_leave(0x16, 0, "Processor Frequency Information");
 
     std::cout << std::setw(20) << std::left << "Processor Base Frequence:";
@@ -566,6 +563,8 @@ template <>
 inline void print_eax<0x80000001U>()
 {
     reg_type reg(cpuid(0x80000001U, 0));
+    print_leave(
+        0x80000001U, 0, "Extended Processor Signature and Feature Bits");
     std::vector<std::string> feats;
 
     test_feature(feats, reg.ecx, 0, "LAHF_LM");
@@ -634,8 +633,6 @@ inline void print_eax<0x80000001U>()
     test_feature(feats, reg.edx, 30, "3DNOWEXT");
     test_feature(feats, reg.edx, 31, "3DNOW");
 
-    print_leave(
-        0x80000001U, 0, "Extended Processor Signature and Feature Bits");
     print_feature(feats);
 }
 
