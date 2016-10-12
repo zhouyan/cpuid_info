@@ -11,16 +11,16 @@
 #include <intrin.h>
 #endif
 
-struct reg_type {
+struct Register {
     unsigned eax;
     unsigned ebx;
     unsigned ecx;
     unsigned edx;
 };
 
-inline reg_type cpuid(unsigned eax, unsigned ecx)
+inline Register cpuid(unsigned eax, unsigned ecx)
 {
-    reg_type reg;
+    Register reg;
 
 #ifdef _MSC
     __cpuidex(reinterpret_cast<int *>(&reg), static_cast<int>(eax),
@@ -50,12 +50,12 @@ inline unsigned extract_byte(unsigned r, int b)
     return (r & (0xFFU << (b * 8))) >> (b * 8);
 }
 
-inline bool test_bit(unsigned r, int b) { return r & (1U << b); }
+inline bool test_bit(unsigned r, int b) { return r & (0x01U << b); }
 
-class cache_param_type
+class CacheParam
 {
     public:
-    cache_param_type(const reg_type &reg)
+    CacheParam(const Register &reg)
         : level_(0)
         , max_proc_sharing_(0)
         , max_proc_physical_(0)
@@ -131,35 +131,47 @@ class cache_param_type
     bool wbinvd_;
     bool inclusiveness_;
     bool complex_indexing_;
-}; // class cache_param_type
+}; // class CacheParam
 
 inline void print_equal() { std::cout << std::string(100, '=') << std::endl; }
 
 inline void print_dash() { std::cout << std::string(100, '-') << std::endl; }
 
-inline std::string vendor()
+inline std::string hexnum(unsigned x)
 {
-    reg_type reg(cpuid(0, 0));
+    std::stringstream ss;
+    ss << std::hex << std::uppercase;
+    ss << (x < 0x10 ? "0x0" : "0x") << x;
+
+    return ss.str();
+}
+
+inline void print_vendor()
+{
+    Register reg(cpuid(0x00, 0x00));
     char str[sizeof(unsigned) * 3 + 1] = {'\0'};
     std::memcpy(str + sizeof(unsigned) * 0, &reg.ebx, sizeof(unsigned));
     std::memcpy(str + sizeof(unsigned) * 1, &reg.edx, sizeof(unsigned));
     std::memcpy(str + sizeof(unsigned) * 2, &reg.ecx, sizeof(unsigned));
 
-    return std::string(str);
+    std::cout << std::setw(10) << std::left << "Vendor" << str << std::endl;
 }
 
-inline std::string brand()
+inline void print_brand()
 {
-    reg_type reg2(cpuid(0x80000002U, 0));
-    reg_type reg3(cpuid(0x80000003U, 0));
-    reg_type reg4(cpuid(0x80000004U, 0));
+    if (cpuid(0x80000000, 0x00).eax < 0x80000004)
+        return;
+
+    Register reg2(cpuid(0x80000002, 0));
+    Register reg3(cpuid(0x80000003, 0));
+    Register reg4(cpuid(0x80000004, 0));
     const std::size_t reg_size = sizeof(unsigned) * 4;
     char str[reg_size * 3] = {'\0'};
     std::memcpy(str + reg_size * 0, &reg2, reg_size);
     std::memcpy(str + reg_size * 1, &reg3, reg_size);
     std::memcpy(str + reg_size * 2, &reg4, reg_size);
 
-    return std::string(str);
+    std::cout << std::setw(10) << std::left << "Brand" << str << std::endl;
 }
 
 inline void test_feature(unsigned r, unsigned b, const std::string &feat)
@@ -181,8 +193,8 @@ inline void print_leave(unsigned eax, unsigned ecx, const std::string &info)
 {
     print_equal();
     std::cout << info;
-    std::cout << " (EAX = 0x" << std::hex << eax << std::dec;
-    std::cout << ", ECX = 0x" << std::hex << ecx << std::dec;
+    std::cout << " (EAX = " << hexnum(eax);
+    std::cout << ", ECX = " << hexnum(ecx);
     std::cout << ")" << std::endl;
     print_dash();
 }
@@ -202,10 +214,13 @@ template <unsigned>
 inline void print_eax();
 
 template <>
-inline void print_eax<1>()
+inline void print_eax<0x01>()
 {
-    reg_type reg(cpuid(1, 0));
-    print_leave(1, 0, "Feature flags");
+    if (cpuid(0x00, 0x00).eax < 0x01)
+        return;
+
+    Register reg(cpuid(0x01, 0x00));
+    print_leave(0x01, 0x00, "Feature flags");
     std::vector<std::string> feats;
 
     test_feature(feats, reg.ecx, 0, "SSE3");
@@ -278,10 +293,13 @@ inline void print_eax<1>()
 }
 
 template <>
-inline void print_eax<2>()
+inline void print_eax<0x02>()
 {
-    reg_type reg(cpuid(2, 0));
-    print_leave(2, 0, "Cache and TLB information");
+    if (cpuid(0x00, 0x00).eax < 0x02)
+        return;
+
+    Register reg(cpuid(0x02, 0x00));
+    print_leave(0x02, 0x00, "Cache and TLB information");
     std::vector<unsigned> feats;
 
     if (!test_bit(reg.eax, 31)) {
@@ -314,23 +332,25 @@ inline void print_eax<2>()
     std::sort(feats.begin(), feats.end());
     for (std::size_t i = 0; i != feats.size(); ++i)
         if (feats[i] != 0)
-            std::cout << std::hex << "0x" << std::dec << feats[i] << ' ';
+            std::cout << hexnum(feats[i]) << ' ';
     std::cout << std::endl;
     print_dash();
 }
 
 template <>
-inline void print_eax<4>()
+inline void print_eax<0x04>()
 {
-    print_leave(4, 0, "Deterministic Cache Parameters");
-    reg_type reg;
-    unsigned ecx = 0;
-    std::vector<cache_param_type> caches;
+    if (cpuid(0x00, 0x00).eax < 0x04)
+        return;
+
+    print_leave(0x04, 0x00, "Deterministic Cache Parameters");
+    unsigned ecx = 0x00;
+    std::vector<CacheParam> caches;
     while (true) {
-        reg_type reg(cpuid(4, ecx));
+        Register reg(cpuid(0x04, ecx));
         if (extract_bits(reg.eax, 4, 0) == 0)
             break;
-        caches.push_back(cache_param_type(reg));
+        caches.push_back(CacheParam(reg));
         ++ecx;
     }
 
@@ -433,10 +453,13 @@ inline void print_eax<4>()
 }
 
 template <>
-inline void print_eax<6>()
+inline void print_eax<0x06>()
 {
-    reg_type reg(cpuid(6, 0));
-    print_leave(6, 0, "Thermal and Power Management");
+    if (cpuid(0x00, 0x00).eax < 0x06)
+        return;
+
+    Register reg(cpuid(0x06, 0x00));
+    print_leave(0x06, 0x00, "Thermal and Power Management");
 
     test_feature(reg.eax, 0, "Digital temperature sensor");
     test_feature(reg.eax, 1, "Intel Turbo Boost Technology");
@@ -465,10 +488,13 @@ inline void print_eax<6>()
 }
 
 template <>
-inline void print_eax<7>()
+inline void print_eax<0x07>()
 {
-    reg_type reg(cpuid(7, 0));
-    print_leave(7, 0, "Extended feature flags");
+    if (cpuid(0x00, 0x00).eax < 0x07)
+        return;
+
+    Register reg(cpuid(0x07, 0x00));
+    print_leave(0x07, 0x00, "Extended feature flags");
     std::vector<std::string> feats;
 
     test_feature(feats, reg.ebx, 0, "FSGSBASE");
@@ -541,10 +567,44 @@ inline void print_eax<7>()
 }
 
 template <>
+inline void print_eax<0x0B>()
+{
+    if (cpuid(0x00, 0x00).eax < 0x0B)
+        return;
+
+    print_leave(0x0B, 0x00, "Extended Topology Enumeration");
+    Register reg;
+    unsigned ecx = 0x00;
+    while (true) {
+        Register reg(cpuid(0x0B, ecx));
+        unsigned np = extract_bits(reg.ebx, 15, 0);
+        unsigned type = extract_bits(reg.ecx, 16, 8);
+        if (type == 0)
+            break;
+        std::cout << "Number of logical processors at level ";
+        switch (type) {
+            case 1:
+                std::cout << "SMT:  ";
+                break;
+            case 2:
+                std::cout << "Core: ";
+                break;
+            default:
+                break;
+        }
+        std::cout << np << std::endl;
+        ++ecx;
+    }
+}
+
+template <>
 inline void print_eax<0x16>()
 {
-    reg_type reg(cpuid(0x16, 0));
-    print_leave(0x16, 0, "Processor Frequency Information");
+    if (cpuid(0x00, 0x00).eax < 0x16)
+        return;
+
+    Register reg(cpuid(0x16, 0x00));
+    print_leave(0x16, 0x00, "Processor Frequency Information");
 
     std::cout << std::setw(20) << std::left << "Processor Base Frequence:";
     std::cout << std::setw(10) << std::right << (reg.eax & 0xFFFF) << " MHz";
@@ -560,11 +620,14 @@ inline void print_eax<0x16>()
 }
 
 template <>
-inline void print_eax<0x80000001U>()
+inline void print_eax<0x80000001>()
 {
-    reg_type reg(cpuid(0x80000001U, 0));
+    if (cpuid(0x80000000, 0x00).eax < 0x80000001)
+        return;
+
+    Register reg(cpuid(0x80000001, 0x00));
     print_leave(
-        0x80000001U, 0, "Extended Processor Signature and Feature Bits");
+        0x80000001, 0x00, "Extended Processor Signature and Feature Bits");
     std::vector<std::string> feats;
 
     test_feature(feats, reg.ecx, 0, "LAHF_LM");
@@ -638,53 +701,20 @@ inline void print_eax<0x80000001U>()
 
 int main()
 {
-    unsigned max_eax = cpuid(0, 0).eax;
-    unsigned max_eax_ext = cpuid(0x80000000U, 0).eax;
-
-    std::cout << std::uppercase;
 
     print_equal();
-
-    std::cout << std::setw(20) << std::left << "Vendor" << vendor()
-              << std::endl;
-
-    if (max_eax_ext >= 0x80000004) {
-        std::cout << std::setw(20) << std::left << "Brand" << brand()
-                  << std::endl;
-    }
-
-    std::cout << "Max calling EAX: ";
-    std::cout << "0x" << std::hex << max_eax << std::dec << ", ";
-    std::cout << "0x" << std::hex << max_eax_ext << std::dec << std::endl;
+    print_vendor();
+    print_brand();
     print_dash();
 
-    if (max_eax >= 1) {
-        print_eax<1>();
-    }
-
-    if (max_eax >= 2) {
-        print_eax<2>();
-    }
-
-    if (max_eax >= 4) {
-        print_eax<4>();
-    }
-
-    if (max_eax >= 6) {
-        print_eax<6>();
-    }
-
-    if (max_eax >= 7) {
-        print_eax<7>();
-    }
-
-    if (max_eax >= 0x16) {
-        print_eax<0x16>();
-    }
-
-    if (max_eax_ext >= 0x80000001U) {
-        print_eax<0x80000001U>();
-    }
+    print_eax<0x01>();
+    print_eax<0x02>();
+    print_eax<0x04>();
+    print_eax<0x06>();
+    print_eax<0x07>();
+    print_eax<0x0B>();
+    print_eax<0x16>();
+    print_eax<0x80000001>();
 
     return 0;
 }
