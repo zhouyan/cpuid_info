@@ -1,11 +1,3 @@
-#ifdef __linux__
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-#include <sched.h>
-#include <unistd.h>
-#endif
-
 #include <algorithm>
 #include <cstddef>
 #include <cstring>
@@ -180,62 +172,6 @@ inline void print_brand()
     std::memcpy(str + reg_size * 2, &reg4, reg_size);
 
     std::cout << std::setw(10) << std::left << "Brand" << str << std::endl;
-}
-
-inline void print_topology()
-{
-    if (cpuid(0x00, 0x00).eax < 0x0B)
-        return;
-
-    unsigned smt_bits = 0;
-    unsigned core_bits = 0;
-    unsigned ecx = 0x00;
-    while (true) {
-        Register reg(cpuid(0x0B, ecx));
-        unsigned bits = extract_bits(reg.ebx, 4, 0);
-        unsigned type = extract_bits(reg.ecx, 15, 8);
-        if (type == 0)
-            break;
-        if (type == 1)
-            smt_bits = bits;
-        if (type == 2)
-            core_bits = bits;
-        ++ecx;
-    }
-
-    std::cout << std::setw(25) << std::left << "Logical processor";
-    std::cout << std::setw(10) << std::left << "x2APIC";
-    std::cout << std::setw(10) << std::left << "SMT";
-    std::cout << std::setw(10) << std::left << "Core";
-    std::cout << std::setw(10) << std::left << "Package";
-    std::cout << std::endl;
-
-    unsigned smt_mask = ~((~0U) << smt_bits);
-    unsigned core_mask = (~((~0U) << core_bits)) ^ smt_mask;
-    unsigned pkg_mask = (~0U) << core_bits;
-
-#ifdef __linux__
-    unsigned id_cpu = 0;
-    unsigned max_cpu = sysconf(_SC_NPROCESSORS_CONF);
-    for (unsigned id_cpu = 0; id_cpu != max_cpu; ++id_cpu) {
-        cpu_set_t set;
-        CPU_ZERO(&set);
-        CPU_SET(id_cpu, &set);
-        if (sched_setaffinity(0, sizeof(cpu_set_t), &set) != 0)
-            break;
-        Register reg(cpuid(0x0B, 0x00));
-        unsigned id_apic = reg.edx;
-        unsigned id_smt = id_apic & smt_mask;
-        unsigned id_core = (id_apic & core_mask) >> smt_bits;
-        unsigned id_pkg = (id_apic & pkg_mask) >> core_bits;
-        std::cout << std::setw(25) << std::left << id_cpu;
-        std::cout << std::setw(10) << std::left << id_apic;
-        std::cout << std::setw(10) << std::left << id_smt;
-        std::cout << std::setw(10) << std::left << id_core;
-        std::cout << std::setw(10) << std::left << id_pkg;
-        std::cout << std::endl;
-    }
-#endif
 }
 
 inline void test_feature(unsigned r, unsigned b, const std::string &feat)
@@ -737,8 +673,6 @@ int main()
     print_equal();
     print_vendor();
     print_brand();
-    print_dash();
-    print_topology();
     print_dash();
 
     print_eax<0x01>();
