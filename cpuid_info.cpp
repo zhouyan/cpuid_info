@@ -701,7 +701,6 @@ inline void print_eax<0x80000001>()
 
 int main()
 {
-
     print_equal();
     print_vendor();
     print_brand();
