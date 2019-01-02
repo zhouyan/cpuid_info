@@ -575,13 +575,13 @@ inline void print_eax<0x16>()
     Register reg(cpuid(0x16, 0x00));
     print_leave(0x16, 0x00, "Processor Frequency Information");
 
-    std::cout << std::setw(20) << std::left << "Processor Base Frequence:";
+    std::cout << std::setw(30) << std::left << "Processor Base Frequence:";
     std::cout << std::setw(10) << std::right << (reg.eax & 0xFFFF) << " MHz";
     std::cout << std::endl;
-    std::cout << std::setw(20) << std::left << "Maximum Frequence:";
+    std::cout << std::setw(30) << std::left << "Maximum Frequence:";
     std::cout << std::setw(10) << std::right << (reg.ebx & 0xFFFF) << " MHz";
     std::cout << std::endl;
-    std::cout << std::setw(20) << std::left << "Bus (Reference) frequence:";
+    std::cout << std::setw(30) << std::left << "Bus (Reference) frequence:";
     std::cout << std::setw(10) << std::right << (reg.ecx & 0xFFFF) << " MHz";
     std::cout << std::endl;
 
